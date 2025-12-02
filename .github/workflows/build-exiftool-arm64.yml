@@ -3,7 +3,7 @@ name: build-exiftool-arm64
 on:
   push:
     tags:
-      - 'v*'
+      - '*'
   workflow_dispatch:
 
 permissions:
@@ -40,7 +40,7 @@ jobs:
           set -euox pipefail
 
           if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
-            EXIFTOOL_TAG="${GITHUB_REF_NAME#v}"
+            EXIFTOOL_TAG="${GITHUB_REF_NAME}"
           else
             EXIFTOOL_TAG="13.39"
           fi
