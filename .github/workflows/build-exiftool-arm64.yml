@@ -30,7 +30,7 @@ jobs:
       - name: Install Perl
         run: |
           set -euox pipefail
-          sudo port -N install perl5.40
+          sudo port -N install perl5.40 xz
 
       - name: Build ExifTool
         run: |
@@ -99,3 +99,9 @@ jobs:
           name: exiftool-macos-arm64
           path: export/exiftool-macos-arm64.tar.xz
 
+      - name: Debug
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cpanm-logs
+          path: ~/.cpanm/work/**/build.log
