@@ -30,7 +30,7 @@ jobs:
       - name: Install Perl
         run: |
           set -euox pipefail
-          sudo port -N install perl5.40 xz
+          sudo port -N -s install perl5.40 xz
 
       - name: Build ExifTool
         run: |
