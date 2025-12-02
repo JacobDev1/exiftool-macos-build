@@ -1,0 +1,101 @@
+name: build-exiftool-arm64
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-exiftool-arm64:
+    runs-on: macos-15
+
+    env:
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install MacPorts
+        run: |
+          set -euox pipefail
+          curl -L https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-15-Sequoia.pkg -o MacPorts.pkg
+          sudo installer -pkg MacPorts.pkg -target /
+          echo "/opt/local/bin" >> "$GITHUB_PATH"
+          echo "/opt/local/sbin" >> "$GITHUB_PATH"
+          printf "build_arch    arm64\nmacosx_deployment_target    11.0\n" | sudo tee -a /opt/local/etc/macports/macports.conf > /dev/null
+          sudo /opt/local/bin/port -v selfupdate
+
+      - name: Install Perl
+        run: |
+          set -euox pipefail
+          sudo port -N install perl5.40
+
+      - name: Build ExifTool
+        run: |
+          set -euox pipefail
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            EXIFTOOL_TAG="${GITHUB_REF_NAME#v}"
+          else
+            EXIFTOOL_TAG="13.39"
+          fi
+          PERL_PATH="/opt/local/bin/perl5.40"
+          OUTPUT_DIR="${PWD}/export"
+          TEMP_DIR="$(mktemp -d)"
+          CPANM_PATH="${TEMP_DIR}/cpanm"
+
+          mkdir -p "$OUTPUT_DIR"
+          export PERL_MM_OPT="--with-bundled-sombok --disable-libthai"
+
+          curl -fsSL https://cpanmin.us -o "${CPANM_PATH}"
+          chmod +x "${CPANM_PATH}"
+
+          git clone --depth 1 -b "${EXIFTOOL_TAG}" https://github.com/exiftool/exiftool "${TEMP_DIR}/exiftool"
+          cd "${TEMP_DIR}/exiftool"
+          chmod +x ./build_tag_lookup
+          ./build_tag_lookup
+
+          perl_packages=(
+            IO::Compress::Brotli IO::Uncompress::Brotli Archive::Zip Compress::Zlib IO::Compress::Bzip2 IO::Compress::RawDeflate IO::Uncompress::RawInflate Compress::Raw::Lzma
+            Digest::MD5 Digest::SHA Time::Piece POSIX::strptime Time::HiRes
+            Unicode::LineBreak
+          )
+          cpan_prefix="${TEMP_DIR}/vendor_arm64"
+          mkdir -p "${cpan_prefix}"
+          arch -arm64 \
+            "${PERL_PATH}" \
+            "${CPANM_PATH}" \
+            -L "${cpan_prefix}" \
+            --notest --quiet --no-interactive \
+            PAR::Packer Module::ScanDeps \
+            "${perl_packages[@]}"
+
+          export PERL5LIB="${cpan_prefix}/lib/perl5"
+          export PATH="${cpan_prefix}/bin:${PATH}"
+
+          pp_packages=()
+          for p in "${perl_packages[@]}"; do
+            pp_packages+=(-M "$p")
+          done
+
+          arch -arm64 \
+            "${PERL_PATH}" \
+            -S pp \
+            -I lib -a "lib/" \
+            "${pp_packages[@]}" \
+            -o "${OUTPUT_DIR}/exiftool" \
+            exiftool
+
+      - name: Pack to tar.xz
+        run: |
+          cd export
+          tar -cJf exiftool-macos-arm64.tar.xz exiftool
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: exiftool-macos-arm64
+          path: export/exiftool-macos-arm64.tar.xz
+
