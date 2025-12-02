@@ -96,12 +96,6 @@ jobs:
           cd export
           tar -cJf exiftool-macos-arm64.tar.xz exiftool
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: exiftool-macos-arm64
-          path: export/exiftool-macos-arm64.tar.xz
-
       - name: Release
         uses: softprops/action-gh-release@v2
         if: github.ref_type == 'tag'
