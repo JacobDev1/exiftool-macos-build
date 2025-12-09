@@ -98,10 +98,3 @@ jobs:
         if: github.ref_type == 'tag'
         with:
           files: export/exiftool-macos-arm64.tar.xz
-
-      - name: Debug
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cpanm-logs
-          path: ~/.cpanm/work/**/build.log
