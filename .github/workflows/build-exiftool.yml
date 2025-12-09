@@ -28,7 +28,26 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '11.0'
 
     steps:
+      - name: Prepare MacPorts cache dir
+        run: |
+          sudo mkdir -p /opt/local
+          sudo chown -R $USER:admin /opt/local
+
+      - name: Cache MacPorts packages
+        id: cache-macports
+        uses: actions/cache@v4
+        with:
+          path: /opt/local
+          key: macos-macports-${{ matrix.arch }}
+
+      - name: Restore MacPorts
+        if: ${{ steps.cache-macports.outputs.cache-hit == 'true' }}
+        run: |
+          echo "/opt/local/bin" >> "$GITHUB_PATH"
+          echo "/opt/local/sbin" >> "$GITHUB_PATH"
+
       - name: Install MacPorts
+        if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
         run: |
           set -euox pipefail
           curl -L https://github.com/macports/macports-base/releases/download/v2.11.6/MacPorts-2.11.6-15-Sequoia.pkg -o MacPorts.pkg
@@ -39,6 +58,7 @@ jobs:
           sudo /opt/local/bin/port -v selfupdate
 
       - name: Install Perl
+        if: ${{ steps.cache-macports.outputs.cache-hit != 'true' }}
         run: |
           set -euox pipefail
           sudo port -N -s install perl5.40 xz
