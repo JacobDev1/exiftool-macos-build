@@ -37,7 +37,9 @@ jobs:
         id: cache-macports
         uses: actions/cache@v4
         with:
-          path: /opt/local
+          path: |
+            /opt/local
+            !/opt/local/var/macports/home
           key: macos-macports-${{ matrix.arch }}
 
       - name: Restore MacPorts
